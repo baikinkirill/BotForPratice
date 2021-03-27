@@ -17,10 +17,13 @@ def check(obj):
     from_id = obj['message']["from"]['id']
     con = sl.connect('bd.db')
     cur = con.cursor()
-    cr = cur.execute("SELECT * FROM users WHERE id=?", (from_id,)).fetchall()[0]
+    cr = cur.execute("SELECT * FROM users WHERE id=?", (from_id,)).fetchall()
     if (len(cr) == 0):
         cur.execute("INSERT INTO users (id) VALUES (?)", (from_id,))
         con.commit()
+        cr = ["", "", ""]
+    else:
+        cr = cr[0]
 
     command = []
     if ("text" in obj['message']):
@@ -48,6 +51,7 @@ def check(obj):
     for i in range(0, len(command.split(" ")) - 1):
         reg = reg + "([^\s]*)\s*"
     command = re.findall(reg, command)
+
     if (len(command) == 0):
         command.append("NULL")
     if (command[0] == "cancel"):
@@ -74,11 +78,10 @@ def check(obj):
                                                    "reply_markup": (keyboards.home_keyboard())})
 
 
-
 def calculator():
     (api.query("sendMessage", params = {"chat_id": from_id,
-                                       "text": "Введите...",
-                                       "reply_markup": (keyboards.calc())}).json())
+                                        "text": "Введите...",
+                                        "reply_markup": (keyboards.calc())}).json())
 
 
 def checkCallback(obj):
@@ -92,52 +95,59 @@ def checkCallback(obj):
     con.commit()
     command = obj['callback_query']['data']
 
-    calc=["c1","c2","c3","c4","c5","c6","c7","c8","c9","c0","c+","c-","c*","c/","c=","cC"]
+    calc = ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c0", "c+", "c-", "c*", "c/", "c=", "cC"]
 
     if (command == "cancel"):
         cancel()
-    elif(command in calc):
+    elif (command in calc):
         callbackCalc(obj)
 
 
-
 def callbackCalc(obj):
-
-    operation=obj['callback_query']['data']
-    id=obj['callback_query']['message']['message_id']
-    text=obj['callback_query']['message']['text']
-    te=""
-    if(text=="Введите..."):
-        text=""
+    operation = obj['callback_query']['data']
+    id = obj['callback_query']['message']['message_id']
+    text = obj['callback_query']['message']['text']
+    te = ""
+    if (text == "Введите..."):
+        text = ""
     else:
-        te=text[len(text)-1]
-    if(te=="+" or te=="-" or te=="*" or te=="/"):
-        text=text+" "
+        te = text[len(text) - 1]
+    if (te == "+" or te == "-" or te == "*" or te == "/"):
+        text = text + " "
 
-
-    if(operation=="c1"):text=text+"1"
-    elif(operation=="c2"):text=text+"2"
-    elif(operation=="c3"):text=text+"3"
-    elif(operation=="c4"):text=text+"4"
-    elif(operation=="c5"):text=text+"5"
-    elif(operation=="c6"):text=text+"6"
-    elif(operation=="c7"):text=text+"7"
-    elif(operation=="c8"):text=text+"8"
-    elif(operation=="c9"):text=text+"9"
-    elif(operation=="c0"):text=text+"0"
-    elif(operation=="c+"):
-        text=correct(text)
-        text=str(text)+" + "
-    elif(operation=="c-"):
-        text=correct(text)
-        text=text+" - "
-    elif(operation=="c*"):
-        text=correct(text)
-        text=text+" * "
-    elif(operation=="c/"):
-        text=correct(text)
-        text=text+" / "
-    elif(operation=="c="):
+    if (operation == "c1"):
+        text = text + "1"
+    elif (operation == "c2"):
+        text = text + "2"
+    elif (operation == "c3"):
+        text = text + "3"
+    elif (operation == "c4"):
+        text = text + "4"
+    elif (operation == "c5"):
+        text = text + "5"
+    elif (operation == "c6"):
+        text = text + "6"
+    elif (operation == "c7"):
+        text = text + "7"
+    elif (operation == "c8"):
+        text = text + "8"
+    elif (operation == "c9"):
+        text = text + "9"
+    elif (operation == "c0"):
+        text = text + "0"
+    elif (operation == "c+"):
+        text = correct(text)
+        text = str(text) + " + "
+    elif (operation == "c-"):
+        text = correct(text)
+        text = text + " - "
+    elif (operation == "c*"):
+        text = correct(text)
+        text = text + " * "
+    elif (operation == "c/"):
+        text = correct(text)
+        text = text + " / "
+    elif (operation == "c="):
         ol = re.findall("([\-]*\d*)\s([+\-*\/])\s([\-]*\d{1,})", text)
         if (len(ol) > 0):
             ol = ol[0]
@@ -149,13 +159,13 @@ def callbackCalc(obj):
                 text = int(ol[0]) * int(ol[2])
             if (ol[1] == "/"):
                 text = int(ol[0]) / int(ol[2])
-        text=str(text)
-    elif(operation=="cC"):
+        text = str(text)
+    elif (operation == "cC"):
         print("F")
-        text="Введите..."
+        text = "Введите..."
 
-    api.query("editMessageText",params = {"chat_id":obj['callback_query']["from"]['id'],"message_id":id,
-                                          "text":text,"reply_markup":keyboards.calc()})
+    api.query("editMessageText", params = {"chat_id": obj['callback_query']["from"]['id'], "message_id": id,
+                                           "text": text, "reply_markup": keyboards.calc()})
 
 
 def correct(text):
@@ -163,7 +173,7 @@ def correct(text):
         ol = re.findall("([\-]*\d*)\s([+\-*\/])\s([\-]*\d{1,})", text)
         ol1 = re.findall("([\-]*\d*)\s([+\-*\/])", text)
         if (len(ol) > 0):
-            ol=ol[0]
+            ol = ol[0]
             if (ol[1] == "+"):
                 text = int(ol[0]) + int(ol[2])
             if (ol[1] == "-"):
@@ -176,6 +186,7 @@ def correct(text):
             text = str(ol1[0][0])
 
     return str(text)
+
 
 def sendHello(obj):
     api.query("sendSticker", params = {"chat_id": obj['message']["from"]['id'],
