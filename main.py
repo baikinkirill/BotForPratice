@@ -32,6 +32,7 @@ class Bot:
                     th = Thread(target=command.check, args=(o[i],))
                     th.start()
                 elif ("callback_query" in o[i]):
+
                     th = Thread(target=command.checkCallback, args=(o[i],))
                     th.start()
 

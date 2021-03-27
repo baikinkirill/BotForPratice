@@ -71,6 +71,12 @@ class create:
 
         texte=text.split("\n")
         for i in range(0,len(texte)):
+            if(texte[i]==""):
+                draw.text((margin, offset - 5), "", font = font, fill = "#000")
+                x = font.getsize("")[0]
+                if (x > maxX):
+                    maxX = x
+                offset += font.getsize(line)[1]
             wrap=textwrap.wrap(texte[i], width = 45)
             for line in wrap:
                 draw.text((margin, offset - 5), line, font = font, fill = "#000")
