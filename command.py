@@ -60,7 +60,9 @@ def check(obj):
         if ((cr[2]) != None and str(cr[2]) != ""):
             if (cr[2] == "weather"):
                 sendWeather(obj)
-
+            elif (cr[2] == "calculator"):
+                api.query("sendMessage", params={"chat_id": obj['message']["from"]['id'],
+                                         "text": result(obj['message']['text'])})
         else:
             if (command[0] == "start"):
                 sendHello(obj)
@@ -79,9 +81,30 @@ def check(obj):
 
 
 def calculator():
+    con = sl.connect('bd.db')
+    cur = con.cursor()
+    cur.execute("UPDATE users SET action=? WHERE id=?", ("calculator", from_id))
+    con.commit()
+    con.close()
     (api.query("sendMessage", params = {"chat_id": from_id,
                                         "text": "Введите...",
                                         "reply_markup": (keyboards.calc())}).json())
+    print(api.query("sendMessage", params = {"chat_id": from_id,
+                                        "parse_mode":"HTML",
+                                        "reply_markup": (keyboards.cancel()),
+                                        "text": """
+                                        
+Можете прислать выражение, например:
+                                        
+<pre>748 * (15 + 3 * (15 / 15 * 1 + 2 * (79 + 5))) / (7 + 8) + 13</pre>
+                                        
+Не обращайте внимания на пробелы, они все равно потом будут удалены.
+
+В боте так же доступны степени, например: <pre>2^((1+3)+(5/5))</pre>
+
+<b>Чтобы выйти из калькулятора, обязательно нужно написать /cancel, либо нажать на кнопку ниже.</b>
+                                        
+                                        """}).json())
 
 
 def checkCallback(obj):
@@ -95,7 +118,7 @@ def checkCallback(obj):
     con.commit()
     command = obj['callback_query']['data']
 
-    calc = ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c0", "c+", "c-", "c*", "c/", "c=", "cC"]
+    calc = ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c0", "c+", "c-", "c*", "c/", "c=", "cC","c(","c)"]
 
     if (command == "cancel"):
         cancel()
@@ -136,30 +159,19 @@ def callbackCalc(obj):
     elif (operation == "c0"):
         text = text + "0"
     elif (operation == "c+"):
-        text = correct(text)
         text = str(text) + " + "
     elif (operation == "c-"):
-        text = correct(text)
         text = text + " - "
     elif (operation == "c*"):
-        text = correct(text)
         text = text + " * "
     elif (operation == "c/"):
-        text = correct(text)
         text = text + " / "
+    elif (operation == "c)"):
+        text = text + ") "
+    elif (operation == "c("):
+        text = text + " ( "
     elif (operation == "c="):
-        ol = re.findall("([\-]*\d*)\s([+\-*\/])\s([\-]*\d{1,})", text)
-        if (len(ol) > 0):
-            ol = ol[0]
-            if (ol[1] == "+"):
-                text = int(ol[0]) + int(ol[2])
-            if (ol[1] == "-"):
-                text = int(ol[0]) - int(ol[2])
-            if (ol[1] == "*"):
-                text = int(ol[0]) * int(ol[2])
-            if (ol[1] == "/"):
-                text = int(ol[0]) / int(ol[2])
-        text = str(text)
+        text=result(text)
     elif (operation == "cC"):
         print("F")
         text = "Введите..."
@@ -169,21 +181,81 @@ def callbackCalc(obj):
 
 
 def correct(text):
-    if ("+" in text or "-" in text or "*" in text or "/" in text):
-        ol = re.findall("([\-]*\d*)\s([+\-*\/])\s([\-]*\d{1,})", text)
-        ol1 = re.findall("([\-]*\d*)\s([+\-*\/])", text)
-        if (len(ol) > 0):
-            ol = ol[0]
-            if (ol[1] == "+"):
-                text = int(ol[0]) + int(ol[2])
-            if (ol[1] == "-"):
-                text = int(ol[0]) - int(ol[2])
-            if (ol[1] == "*"):
-                text = int(ol[0]) * int(ol[2])
-            if (ol[1] == "/"):
-                text = int(ol[0]) / int(ol[2])
-        elif (len(ol1) > 0):
-            text = str(ol1[0][0])
+    text=re.sub("\s","",text)
+    return text
+
+def result(text):
+    # скобки (\(([\-\d\.]*[\+\-\*\/][\-\d\.]*)*\))
+    # умножение/деление ([\-\d\.]*[\*\/][\-\d\.]*)
+    # сложение/умножение ([\-\d\.]*[\+\-][\-\d\.]*)
+
+    # сначала считаем то, что в скобках
+    text=correct(text)
+
+    try:
+        skob = json.loads(json.dumps(re.findall("(\(([\-\d\.]*[\+\-\*\/][\-\d\.]*)*\))", text, re.MULTILINE | re.VERBOSE)))
+        while (len(skob) > 0):
+            nach = skob[0][0]
+            op = re.findall("([\-\d\.]*[\*\/\^][\-\d\.]*)", skob[0][0])
+            while (len(op) > 0):
+                opp = re.findall("([\-\d\.]*)([\+\-\*\/\^])(\-*\d*)", op[0])[0]
+                if (opp[1] == '*'):
+                    res = str(float(opp[0]) * float(opp[2]))
+                elif (opp[1] == "/"):
+                    res = str(float(opp[0]) / float(opp[2]))
+                elif (opp[1] == "^"):
+                    res = str(float(opp[0]) ** float(opp[2]))
+                skob[0][0] = skob[0][0].replace(op[0], res)
+                op = re.findall("([\-\d\.]*[\*\/\^][\-\d\.]*)", skob[0][0])
+
+            op = re.findall("([\-\d\.]*[\+\-][\-\d\.]*)", skob[0][0])
+            while (len(op) > 0):
+                opp = re.findall("([\-\d\.]*)([\+\-\*\/])(\-*\d*)", op[0])[0]
+                if (opp[1] == '+'):
+                    res = str(float(opp[0]) + float(opp[2]))
+                elif (opp[1] == "-"):
+                    res = str(float(opp[0]) - float(opp[2]))
+                skob[0][0] = skob[0][0].replace(op[0], res)
+
+                op = re.findall("([\-\d\.]*[\*\/][\-\d\.]*)", skob[0][0])
+
+            text = text.replace(nach, re.sub("[\)\(]", "", skob[0][0]))
+
+            skob = json.loads(
+                json.dumps(re.findall("(\(([\-\d\.]*[\+\-\*\/][\-\d\.]*)*\))", text, re.MULTILINE | re.VERBOSE)))
+
+        # а теперь, что без скобок
+        op = re.findall("([\-\d\.]*[\*\/\^][\-\d\.]*)", text)
+        while (len(op) > 0):
+            opp = re.findall("([\-\d\.]*)([\+\-\*\/\^])(\-*\d*)", op[0])[0]
+            if (opp[1] == '*'):
+                res = str(float(opp[0]) * float(opp[2]))
+            elif (opp[1] == "/"):
+                res = str(float(opp[0]) / float(opp[2]))
+            elif (opp[1] == "^"):
+                res = str(float(opp[0]) ** float(opp[2]))
+
+            text = text.replace(op[0], res)
+            op = re.findall("([\-\d\.]*[\*\/\^][\-\d\.]*)", text)
+        op = re.findall("([\-\d\.]*[\+\-][\-\d\.]*)", text)
+        while (len(op) > 0):
+            opp = re.findall("([\-\d\.]*)([\+\-\*\/])(\-*\d*)", op[0])[0]
+            if (opp[1] == '+'):
+                res = str(float(opp[0]) + float(opp[2]))
+            elif (opp[1] == "-"):
+                res = str(float(opp[0]) - float(opp[2]))
+
+            text = text.replace(op[0], res)
+            op = re.findall("([\-\d\.]*[\+\-][\-\d\.]*)", text)
+    except:
+        return "Произошла ошибка. Неверные данные.\n\nЕсли хотите выйти из калькулятора, напишите /cancel."
+
+    if(len(re.findall("\d",text))==0):
+        return """
+Ошибка.
+        
+Если хотите выйти из калькулятора, напишите /cancel.
+        """
 
     return str(text)
 

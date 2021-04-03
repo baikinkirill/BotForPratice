@@ -32,6 +32,9 @@ def cancel():
     )
 
 
+
+
+
 def calc():
     return json.dumps(
         {
@@ -51,6 +54,9 @@ def calc():
                 [
                     {"text": "Ce", "callback_data": "cC"}, {"text": "0", "callback_data": "c0"},
                     {"text": "=", "callback_data": "c="}, {"text": "/", "callback_data": "c/"}
+                ],
+                [
+                    {"text": "(", "callback_data": "c("}, {"text": ")", "callback_data": "c)"},
                 ],
 
             ]
