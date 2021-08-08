@@ -48,7 +48,7 @@ class create:
 
         try:
             if (len(img['result']['photos']) > 0):
-                img = "https://api.telegram.org/file/bot753593125:AAFRuZifGt1h0udv6uWXwUvW3AHATjZZFy0/" + (
+                img = "https://api.telegram.org/file/bot753593125:AAHvUANvzJwY6cwmXW6t9QigimAcuimijjs/" + (
                     api.query("getFile", params = {"file_id": img['result']['photos'][0][0]['file_id']}).json()[
                         'result'][
                         'file_path'])
@@ -118,6 +118,7 @@ class create:
         params = api.query("sendPhoto", params = {"chat_id": peer_id},
                            files = {"photo": open(str + ".png", "rb")}).json()
         print(params)
+        print("message")
         os.remove(str + ".png")
 
     def add_corners(im, rad):
